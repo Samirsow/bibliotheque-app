@@ -1,0 +1,27 @@
+/* App.css */
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-body {
+  flex: 1;
+  margin-top: 56px;
+}
+
+.main-content {
+  background-color: #f5f7fa;
+  min-height: calc(100vh - 56px - 60px);
+  padding: 20px;
+}
+
+.sidebar + .main-content {
+  margin-left: 250px;
+}
+
+@media (max-width: 768px) {
+  .sidebar + .main-content {
+    margin-left: 0;
+  }
+}
