@@ -104,7 +104,7 @@ export const bibliothecaireApi = {
       penaliteId,
       transactionId,
     }),
-      // ✅ Demandes en attente - Version corrigée
+      //  Demandes en attente - Version corrigée
    getDemandesEnAttente: () => {
     console.log('📤 Appel API: /gestionemprunt/api/emprunts/demandes-en-attente');
     return apiClient.get('/gestionemprunt/api/emprunts/demandes-en-attente')

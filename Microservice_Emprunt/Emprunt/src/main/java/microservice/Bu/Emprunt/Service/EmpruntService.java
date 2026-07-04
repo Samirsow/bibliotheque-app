@@ -37,7 +37,7 @@ public class EmpruntService {
     private static final int DELAI_EMPRUNT_JOURS = 14;
 
     /**
-     * ✅ Demander un emprunt (par un membre)
+     *  Demander un emprunt (par un membre)
      * Statut = EN_ATTENTE
      */
     public EmpruntReponseDTO demanderEmprunt(EmpruntRequeteDTO requete) {
@@ -96,7 +96,7 @@ public class EmpruntService {
     }
 
     /**
-     * ✅ Valider un emprunt par le bibliothécaire
+     *  Valider un emprunt par le bibliothécaire
      * Statut : EN_ATTENTE -> EN_COURS
      */
     @Transactional
@@ -163,7 +163,7 @@ public class EmpruntService {
     }
 
     /**
-     * ✅ Récupérer toutes les demandes en attente
+     *  Récupérer toutes les demandes en attente
      */
     public List<EmpruntReponseDTO> getDemandesEnAttente() {
         List<Emprunt> demandes = empruntRepository.findByStatutOrderByDateEmpruntAsc(Statut.EN_ATTENTE);
@@ -183,7 +183,7 @@ public class EmpruntService {
                 dto.setUtilisateurPrenom(utilisateur.getPrenom());
                 dto.setUtilisateurEmail(utilisateur.getEmail());
             } catch (Exception e) {
-                System.err.println("❌ Erreur getUtilisateurInfo pour id=" + emprunt.getUtilisateurId() + " : " + e.getMessage());
+                System.err.println(" Erreur getUtilisateurInfo pour id=" + emprunt.getUtilisateurId() + " : " + e.getMessage());
                 e.printStackTrace();
             }
             try {
@@ -191,7 +191,7 @@ public class EmpruntService {
                 dto.setLivreTitre(livre.getTitre());
                 dto.setLivreAuteur(livre.getAuteur());
             } catch (Exception e) {
-                System.err.println("❌ Erreur getLivreInfo pour id=" + emprunt.getLivreId() + " : " + e.getMessage());
+                System.err.println(" Erreur getLivreInfo pour id=" + emprunt.getLivreId() + " : " + e.getMessage());
                 e.printStackTrace();
             }
 
@@ -257,8 +257,25 @@ public class EmpruntService {
         Emprunt emprunt = empruntRepository.findById(Math.toIntExact(empruntId))
                 .orElseThrow(() -> new EmpruntNotFoundException("Prêt non trouvé avec l'ID: " + empruntId));
 
-        if (Statut.RETOURNE.equals(emprunt.getStatut()) || Statut.REFUSE.equals(emprunt.getStatut())) {
+        // Vérifier si l'emprunt peut être retourné
+        if (Statut.RETOURNE.equals(emprunt.getStatut()) ||
+                Statut.REFUSE.equals(emprunt.getStatut())) {
             throw new IllegalStateException("Ce livre ne peut pas être retourné (statut: " + emprunt.getStatut() + ")");
+        }
+
+        // Vérifier la pénalité
+        try {
+            Map<String, Object> penalite = penaliteClient.getPenaliteByEmpruntId(Long.valueOf(emprunt.getId()));
+            if (penalite != null && !penalite.isEmpty()) {
+                String statutPenalite = (String) penalite.get("statut");
+                if ("IMPAYE".equals(statutPenalite)) {
+                    throw new IllegalStateException(
+                            "⚠️ Une pénalité de " + penalite.get("montant") + "€ est impayée."
+                    );
+                }
+            }
+        } catch (Exception e) {
+            // Ignorer
         }
 
         LocalDate dateRetourReelle = dateRetour != null ? dateRetour : LocalDate.now();
@@ -269,7 +286,8 @@ public class EmpruntService {
 
         if (dateRetourReelle.isAfter(emprunt.getDateRetourPrevue())) {
             joursRetard = (int) ChronoUnit.DAYS.between(emprunt.getDateRetourPrevue(), dateRetourReelle);
-            montantPenalite = joursRetard * PENALITE_PAR_JOUR;
+            montantPenalite = joursRetard * 0.50;
+            //  Utilisation de l'ENUM
             emprunt.setStatut(Statut.EN_RETARD);
         } else {
             emprunt.setStatut(Statut.RETOURNE);
@@ -280,25 +298,31 @@ public class EmpruntService {
         livreClient.changerStatutDisponible(emprunt.getLivreId());
         utilisateurClient.decrementerPretsActifs(emprunt.getUtilisateurId());
 
+        // Créer la pénalité si nécessaire
         if (montantPenalite > 0) {
-            Map<String, Object> penaliteData = new HashMap<>();
-            penaliteData.put("utilisateurId", emprunt.getUtilisateurId());
-            penaliteData.put("empruntId", emprunt.getId());
-            penaliteData.put("montant", montantPenalite);
-            penaliteData.put("raison", "RETARD");
-            penaliteData.put("joursRetard", joursRetard);
-            penaliteClient.creerPenalite(penaliteData);
-            envoyerNotificationPenalite(emprunt, joursRetard, montantPenalite);
+            try {
+                Map<String, Object> existingPenalite = penaliteClient.getPenaliteByEmpruntId(Long.valueOf(emprunt.getId()));
+                if (existingPenalite == null || existingPenalite.isEmpty()) {
+                    Map<String, Object> penaliteData = new HashMap<>();
+                    penaliteData.put("utilisateurId", emprunt.getUtilisateurId());
+                    penaliteData.put("empruntId", emprunt.getId());
+                    penaliteData.put("montant", montantPenalite);
+                    penaliteData.put("raison", "RETARD");
+                    penaliteData.put("joursRetard", joursRetard);
+                    penaliteClient.creerPenalite(penaliteData);
+                }
+            } catch (Exception e) {
+                // Ignorer
+            }
         }
-
-        envoyerNotificationRetour(emprunt, joursRetard, montantPenalite);
 
         RetourReponseDTO response = new RetourReponseDTO();
         response.setEmpruntId(Long.valueOf(emprunt.getId()));
         response.setMessage("Livre retourné avec succès");
         response.setJoursRetard(joursRetard);
         response.setMontantPenalite(montantPenalite);
-        response.setStatut(String.valueOf(emprunt.getStatut()));
+        //  Convertir ENUM en String
+        response.setStatut(emprunt.getStatut().name());
 
         return response;
     }
@@ -558,7 +582,7 @@ public class EmpruntService {
         Emprunt emprunt = empruntRepository.findById(Math.toIntExact(empruntId))
                 .orElseThrow(() -> new EmpruntNotFoundException("Emprunt non trouvé avec l'ID: " + empruntId));
 
-        if (emprunt.getStatut() != Statut.RETOURNE && emprunt.getStatut() != Statut.REFUSE && emprunt.getStatut() != Statut.ANNULE) {
+        if (emprunt.getStatut() != Statut.RETOURNE && emprunt.getStatut() != Statut.REFUSE && emprunt.getStatut() != Statut.ANNULE && emprunt.getStatut() != Statut.EN_RETARD) {
             throw new IllegalStateException("Seuls les emprunts déjà retournés ou refuses peuvent être supprimés");
         }
 

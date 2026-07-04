@@ -12,4 +12,6 @@ public interface PenaliteClient {
     // Créer une pénalité pour retard
     @PostMapping("/api/penalites")
     Map<String, Object> creerPenalite(@RequestBody Map<String, Object> penalite);
+    @GetMapping("/api/penalites/emprunt/{empruntId}")
+    Map<String, Object> getPenaliteByEmpruntId(@PathVariable("empruntId") Long empruntId);
 }

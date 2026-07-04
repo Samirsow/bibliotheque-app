@@ -25,7 +25,7 @@ public class Emprunt {
     private LocalDate dateRetourPrevue;
     private LocalDate dateRetour;
     private LocalDate dateValidation;  //  NOUVEAU : Date de validation
-
+    @Column(name = "statut", nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
     private Statut statut;
 

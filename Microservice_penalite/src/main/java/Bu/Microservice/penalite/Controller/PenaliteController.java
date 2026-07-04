@@ -5,6 +5,7 @@ import Bu.Microservice.penalite.Dto.CalculPenaliteDTO;
 import Bu.Microservice.penalite.Dto.PaiementPenaliteDTO;
 import Bu.Microservice.penalite.Dto.PenaliteReponseDTO;
 import Bu.Microservice.penalite.Dto.PenaliteRequeteDTO;
+import Bu.Microservice.penalite.Model.Penalite;
 import Bu.Microservice.penalite.Service.PenaliteService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +42,7 @@ public class PenaliteController {
         PenaliteReponseDTO penalite = penaliteService.creerPenalite(requete);
         return ResponseEntity.status(HttpStatus.CREATED).body(penalite);
     }
+
 
     /**
      * POST /api/penalites/auto - Créer une pénalité automatique
@@ -148,4 +150,6 @@ public class PenaliteController {
 
         return ResponseEntity.ok(response);
     }
+
+
 }

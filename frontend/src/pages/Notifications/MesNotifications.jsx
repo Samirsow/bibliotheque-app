@@ -1,7 +1,8 @@
+// src/Pages/Notifications/MesNotifications.jsx
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { notificationApi } from '../../api/notificationApi';
-import { FaBell, FaTrash } from 'react-icons/fa';
+import { FaBell, FaTrash, FaCheckCircle, FaClock, FaTimesCircle } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 
 const MesNotifications = () => {
@@ -48,16 +49,75 @@ const MesNotifications = () => {
     }
   };
 
+  // ✅ UNIQUEMENT pour CONFIRMATION_RETOUR en EN_ATTENTE
+  const getStatusBadge = (statut, type) => {
+    // ✅ SEULEMENT si c'est une confirmation de retour ET que le statut est EN_ATTENTE
+    if (type === 'CONFIRMATION_RETOUR' && statut === 'EN_ATTENTE') {
+      return {
+        label: '✅ Confirmé',
+        className: 'bg-success',
+        icon: <FaCheckCircle className="me-1" />
+      };
+    }
+
+    // Tous les autres cas
+    const statusMap = {
+      'ENVOYEE': { label: '📨 Envoyée', className: 'bg-success', icon: <FaCheckCircle className="me-1" /> },
+      'ECHEC': { label: '❌ Échec', className: 'bg-danger', icon: <FaTimesCircle className="me-1" /> },
+      'EN_ATTENTE': { label: '⏳ En attente', className: 'bg-warning text-dark', icon: <FaClock className="me-1" /> },
+    };
+
+    return statusMap[statut] || { label: statut || 'Inconnu', className: 'bg-secondary', icon: null };
+  };
+
+  // ✅ Fonction pour obtenir l'icône du type de notification
+  const getTypeIcon = (type) => {
+    const typeMap = {
+      'CONFIRMATION_RETOUR': '🔄',
+      'CONFIRMATION_EMPRUNT': '📚',
+      'VALIDATION_EMPRUNT': '✅',
+      'DEMANDE_EMPRUNT': '📝',
+      'REFUS_EMPRUNT': '❌',
+      'PENALITE': '💰',
+      'RAPPEL_RETARD': '⏰',
+    };
+    return typeMap[type] || '📬';
+  };
+
+  // ✅ Fonction pour formater le type affiché
+  const getTypeLabel = (type) => {
+    const typeMap = {
+      'CONFIRMATION_RETOUR': 'Confirmation retour',
+      'CONFIRMATION_EMPRUNT': 'Confirmation emprunt',
+      'VALIDATION_EMPRUNT': 'Validation emprunt',
+      'DEMANDE_EMPRUNT': 'Demande emprunt',
+      'REFUS_EMPRUNT': 'Refus emprunt',
+      'PENALITE': 'Pénalité',
+      'RAPPEL_RETARD': 'Rappel retard',
+    };
+    return typeMap[type] || type;
+  };
+
   if (loading) {
-    return <div className="text-center">Chargement...</div>;
+    return (
+      <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '300px' }}>
+        <div className="spinner-border text-primary" />
+        <p className="mt-3 text-muted">Chargement des notifications...</p>
+      </div>
+    );
   }
 
   return (
-    <div>
+    <div className="fade-in">
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>Mes notifications</h2>
+        <div>
+          <h2 className="mb-1">📬 Mes notifications</h2>
+          <p className="text-muted mb-0">
+            {notifications.length} notification{notifications.length > 1 ? 's' : ''}
+          </p>
+        </div>
         {notifications.length > 0 && (
-          <button className="btn btn-danger" onClick={handleDeleteAll}>
+          <button className="btn btn-outline-danger" onClick={handleDeleteAll}>
             <FaTrash className="me-2" /> Tout supprimer
           </button>
         )}
@@ -65,43 +125,66 @@ const MesNotifications = () => {
 
       {notifications.length === 0 ? (
         <div className="text-center text-muted py-5">
-          <FaBell size={48} className="mb-3" />
-          <p>Aucune notification</p>
+          <FaBell size={48} className="mb-3 text-secondary" />
+          <h5>Aucune notification</h5>
+          <p className="text-muted">Vous n'avez pas encore de notifications.</p>
         </div>
       ) : (
-        <div className="list-group">
-          {notifications.map((notif) => (
-            <div
-              key={notif.id}
-              className="list-group-item list-group-item-action d-flex justify-content-between align-items-start"
-            >
-              <div className="ms-2 me-auto">
-                <div className="fw-bold">
-                  {notif.sujet}
-                  <span className="badge bg-primary ms-2">{notif.type}</span>
-                </div>
-                <p className="mb-1">{notif.contenu}</p>
-                <small className="text-muted">
-                  {new Date(notif.dateCreation).toLocaleString()}
-                  {notif.statut === 'ENVOYEE' ? (
-                    <span className="badge bg-success ms-2">Envoyée</span>
-                  ) : notif.statut === 'ECHEC' ? (
-                    <span className="badge bg-danger ms-2">Échec</span>
-                  ) : (
-                    <span className="badge bg-warning ms-2">En attente</span>
-                  )}
-                </small>
-              </div>
-              <button
-                className="btn btn-sm btn-outline-danger"
-                onClick={() => handleDelete(notif.id)}
+        <div className="list-group shadow-sm">
+          {notifications.map((notif) => {
+            const statusInfo = getStatusBadge(notif.statut, notif.type);
+            const typeIcon = getTypeIcon(notif.type);
+            const typeLabel = getTypeLabel(notif.type);
+            
+            return (
+              <div
+                key={notif.id}
+                className="list-group-item list-group-item-action d-flex justify-content-between align-items-start"
               >
-                <FaTrash />
-              </button>
-            </div>
-          ))}
+                <div className="ms-2 me-auto w-100">
+                  <div className="d-flex justify-content-between align-items-start">
+                    <div>
+                      <div className="fw-bold fs-6">
+                        {typeIcon} {typeLabel}
+                        {notif.type === 'CONFIRMATION_RETOUR' && (
+                          <span className="badge bg-info ms-2">Retour</span>
+                        )}
+                      </div>
+                      <p className="mb-1 text-muted">{notif.contenu}</p>
+                    </div>
+                    <button
+                      className="btn btn-sm btn-outline-danger ms-2"
+                      onClick={() => handleDelete(notif.id)}
+                      title="Supprimer"
+                    >
+                      <FaTrash size={14} />
+                    </button>
+                  </div>
+                  <div className="d-flex justify-content-between align-items-center mt-2">
+                    <small className="text-muted">
+                      📅 {new Date(notif.dateCreation).toLocaleString()}
+                    </small>
+                    <span className={`badge ${statusInfo.className}`}>
+                      {statusInfo.icon} {statusInfo.label}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
+
+      {/* Légende */}
+      <div className="mt-4 p-3 bg-light rounded">
+        <div className="d-flex flex-wrap gap-3">
+          <span className="badge bg-success">✅ Confirmé</span>
+          <span className="badge bg-warning text-dark">⏳ En attente</span>
+          <span className="badge bg-danger">❌ Échec</span>
+          <span className="badge bg-secondary">📨 Envoyée</span>
+        </div>
+       
+      </div>
     </div>
   );
 };

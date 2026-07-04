@@ -21,4 +21,6 @@ public class PenaliteReponseDTO {
     private LocalDateTime datePaiement;
     private String raison;
     private String description;
+
+
 }

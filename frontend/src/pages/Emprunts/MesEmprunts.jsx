@@ -58,9 +58,12 @@ const MesEmprunts = () => {
     );
   };
 
-  // ✅ Peut supprimer : RETOURNE, REFUSE, ANNULE
+  // ✅ Peut supprimer : RETOURNE, REFUSE, ANNULE, EN_RETARD
   const peutSupprimer = (statut) => {
-    return statut === 'RETOURNE' || statut === 'REFUSE' || statut === 'ANNULE';
+    return statut === 'RETOURNE' || 
+           statut === 'REFUSE' || 
+           statut === 'ANNULE' || 
+           statut === 'EN_RETARD';
   };
 
   if (loading) {
@@ -115,7 +118,7 @@ const MesEmprunts = () => {
                           new Date(e.dateRetourPrevue).toLocaleDateString()}
                         {e.statut === 'EN_RETARD' && (
                           <span className="badge bg-danger ms-2">
-                            {e.joursRetard || '?'}j
+                            {e.joursRetard || '?'}j de retard
                           </span>
                         )}
                       </td>
@@ -161,7 +164,7 @@ const MesEmprunts = () => {
           </div>
           <div className="d-flex align-items-center gap-2 text-muted">
             <FaTrash className="text-danger" />
-            <small>Supprimable (Retourné, Refusé, Annulé)</small>
+            <small>Supprimable (Retourné, Refusé, Annulé, En retard)</small>
           </div>
         </div>
       </div>
