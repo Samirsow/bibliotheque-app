@@ -33,6 +33,8 @@ const MesNotifications = () => {
       await notificationApi.supprimer(id);
       toast.success('Notification supprimée');
       fetchNotifications();
+      // Mettre à jour le compteur dans le composant parent
+      window.dispatchEvent(new Event('notificationUpdate'));
     } catch (error) {
       toast.error('Erreur lors de la suppression');
     }
@@ -44,14 +46,15 @@ const MesNotifications = () => {
       await notificationApi.supprimerAllByUtilisateur(user.id);
       toast.success('Toutes les notifications supprimées');
       fetchNotifications();
+      window.dispatchEvent(new Event('notificationUpdate'));
     } catch (error) {
       toast.error('Erreur lors de la suppression');
     }
   };
 
-  // ✅ UNIQUEMENT pour CONFIRMATION_RETOUR en EN_ATTENTE
+  // ✅ Fonction pour obtenir le badge de statut
   const getStatusBadge = (statut, type) => {
-    // ✅ SEULEMENT si c'est une confirmation de retour ET que le statut est EN_ATTENTE
+    // Pour les notifications de retour, "EN_ATTENTE" devient "Confirmé"
     if (type === 'CONFIRMATION_RETOUR' && statut === 'EN_ATTENTE') {
       return {
         label: '✅ Confirmé',
@@ -60,7 +63,6 @@ const MesNotifications = () => {
       };
     }
 
-    // Tous les autres cas
     const statusMap = {
       'ENVOYEE': { label: '📨 Envoyée', className: 'bg-success', icon: <FaCheckCircle className="me-1" /> },
       'ECHEC': { label: '❌ Échec', className: 'bg-danger', icon: <FaTimesCircle className="me-1" /> },
@@ -98,6 +100,11 @@ const MesNotifications = () => {
     return typeMap[type] || type;
   };
 
+  // Compter les notifications non lues
+  const unreadCount = notifications.filter(
+    notif => notif.statut === 'EN_ATTENTE' || !notif.lu
+  ).length;
+
   if (loading) {
     return (
       <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '300px' }}>
@@ -114,6 +121,9 @@ const MesNotifications = () => {
           <h2 className="mb-1">📬 Mes notifications</h2>
           <p className="text-muted mb-0">
             {notifications.length} notification{notifications.length > 1 ? 's' : ''}
+            {unreadCount > 0 && (
+              <span className="badge bg-danger ms-2">{unreadCount} non lue{unreadCount > 1 ? 's' : ''}</span>
+            )}
           </p>
         </div>
         {notifications.length > 0 && (
@@ -135,19 +145,22 @@ const MesNotifications = () => {
             const statusInfo = getStatusBadge(notif.statut, notif.type);
             const typeIcon = getTypeIcon(notif.type);
             const typeLabel = getTypeLabel(notif.type);
+            const isUnread = notif.statut === 'EN_ATTENTE' || !notif.lu;
             
             return (
               <div
                 key={notif.id}
-                className="list-group-item list-group-item-action d-flex justify-content-between align-items-start"
+                className={`list-group-item list-group-item-action d-flex justify-content-between align-items-start ${
+                  isUnread ? 'border-start border-4 border-primary' : ''
+                }`}
               >
                 <div className="ms-2 me-auto w-100">
                   <div className="d-flex justify-content-between align-items-start">
                     <div>
                       <div className="fw-bold fs-6">
                         {typeIcon} {typeLabel}
-                        {notif.type === 'CONFIRMATION_RETOUR' && (
-                          <span className="badge bg-info ms-2">Retour</span>
+                        {isUnread && (
+                          <span className="badge bg-primary ms-2">Nouveau</span>
                         )}
                       </div>
                       <p className="mb-1 text-muted">{notif.contenu}</p>
@@ -182,6 +195,7 @@ const MesNotifications = () => {
           <span className="badge bg-warning text-dark">⏳ En attente</span>
           <span className="badge bg-danger">❌ Échec</span>
           <span className="badge bg-secondary">📨 Envoyée</span>
+          <span className="badge bg-primary">🔵 Nouveau</span>
         </div>
        
       </div>

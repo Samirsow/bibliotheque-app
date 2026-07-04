@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { FaBook, FaSignOutAlt, FaUser, FaBell, FaHome } from 'react-icons/fa';
+import { notificationApi } from '../../api/notificationApi';
 
 const Navbar = () => {
   const { user, isAuthenticated, isAdmin, isBibliothecaire, logout } = useAuth();
@@ -30,6 +31,27 @@ const Navbar = () => {
   const admin = isAdmin();
   const bibliothecaire = !admin && isBibliothecaire();
 
+  const [notificationsCount, setNotificationsCount] = useState(0);
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      fetchNotificationsCount();
+    }
+  }, [isAuthenticated, user]);
+
+  const fetchNotificationsCount = async () => {
+    try {
+      const response = await notificationApi.getByUtilisateur(user.id);
+      // Compter les notifications non lues ou en attente
+      const unreadCount = response.data.filter(
+        notif => notif.statut === 'EN_ATTENTE' || !notif.lu
+      ).length;
+      setNotificationsCount(unreadCount);
+    } catch (error) {
+      console.error('Erreur chargement notifications:', error);
+    }
+  };
+
   // ✅ Le lien de la marque redirige vers le Dashboard pour tout le monde
   const brandLink = '/dashboard';
 
@@ -55,7 +77,7 @@ const Navbar = () => {
             <>
               {admin ? (
                 <ul className="navbar-nav me-auto">
-                  {/* ✅ Ajout du Dashboard pour l'admin */}
+                  {/*  Ajout du Dashboard pour l'admin */}
                   <li className="nav-item">
                     <Link className="nav-link" to="/dashboard">
                       <FaHome className="me-1" /> Dashboard
@@ -70,7 +92,7 @@ const Navbar = () => {
                 </ul>
               ) : bibliothecaire ? (
                 <ul className="navbar-nav me-auto">
-                  {/* ✅ Ajout du Dashboard pour le bibliothécaire */}
+                  {/*  Ajout du Dashboard pour le bibliothécaire */}
                   <li className="nav-item">
                     <Link className="nav-link" to="/dashboard">
                       <FaHome className="me-1" /> Dashboard
@@ -106,12 +128,16 @@ const Navbar = () => {
                   <li className="nav-item">
                     <Link className="nav-link" to="/penalites">Pénalités</Link>
                   </li>
-                  <li className="nav-item">
-                    <Link className="nav-link" to="/notifications">
-                      <FaBell />
-                      <span className="badge bg-danger ms-1">3</span>
-                    </Link>
-                  </li>
+                 <li className="nav-item position-relative">
+                  <Link className="nav-link" to="/notifications">
+                    <FaBell />
+                    {notificationsCount > 0 && (
+                      <span className="badge bg-danger ms-1">
+                        {notificationsCount}
+                      </span>
+                    )}
+                  </Link>
+                </li>
                 </ul>
               )}
 
